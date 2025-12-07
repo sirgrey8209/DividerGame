@@ -1,0 +1,10 @@
+{
+    "normal": {
+        "enemyCountMin": 1,
+        "enemyCountMax": 3,
+        "hpMin": 10,
+        "hpMax": 100,
+        "damage": 1,
+        "baseInterval": 5000
+    }
+}

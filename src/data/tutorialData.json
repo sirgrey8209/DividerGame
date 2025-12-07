@@ -1,0 +1,153 @@
+{
+    "steps": {
+        "10": {
+            "modal": {
+                "title": "DIVIDER",
+                "content": "이 게임은 무기들을 사용해서\n적 숫자들을 물리치는 게임입니다.",
+                "buttonText": "그렇군요"
+            },
+            "overlay": {
+                "text": "파란색 숫자 무기를\n드래그해서 공격해 보세요",
+                "position": "near-weapons"
+            },
+            "highlightWeapons": [
+                "w_2",
+                "w_3",
+                "w_5",
+                "w_7"
+            ],
+            "lockWeapons": [
+                "w_basic"
+            ],
+            "condition": "attack_fail",
+            "nextStep": 11,
+            "delay": 1500
+        },
+        "11": {
+            "modal": {
+                "title": "공격 실패",
+                "content": "적 숫자가 내 무기의 공격력으로\n정확히 나누어지지 않으면\n공격이 먹히지 않습니다.",
+                "buttonText": "이럴 수가!"
+            },
+            "overlay": {
+                "text": "노란색 1 무기는 \n적 숫자를 무조건 1 감소시키는\n특별한 무기입니다.",
+                "position": "near-weapons"
+            },
+            "highlightWeapons": [
+                "w_basic"
+            ],
+            "lockWeapons": [
+                "w_2",
+                "w_3",
+                "w_5",
+                "w_7"
+            ],
+            "condition": "attack_success",
+            "nextStep": 12
+        },
+        "12": {
+            "modal": {
+                "title": "",
+                "content": "적 숫자가 1 줄어들어서\n다른 무기들로\n공격할 수 있습니다.",
+                "buttonText": "정말?"
+            },
+            "overlay": {
+                "text": "이제 다른 무기를 사용하여\n적 숫자를 해치워 보세요!",
+                "position": "near-weapons"
+            },
+            "highlightWeapons": "valid",
+            "lockWeapons": [],
+            "condition": "phase_clear",
+            "nextStep": 20
+        },
+        "20": {
+            "modal": {
+                "title": "적 공격",
+                "content": "일반적인 적들은\n공격 게이지가 채워지면\n공격을 합니다.",
+                "buttonText": "확인"
+            },
+            "overlay": {
+                "text": "게이지가 채워지기 전에\n빠르게 공격해 보세요!",
+                "position": "near-weapons"
+            },
+            "lockWeapons": [
+                "w_basic"
+            ],
+            "highlightWeapons": [
+                "w_2",
+                "w_3",
+                "w_5",
+                "w_7"
+            ],
+            "condition": "attack_success",
+            "nextStep": 21
+        },
+        "21": {
+            "modal": {
+                "title": "공격 게이지",
+                "content": "적을 공격하는데 성공하면\n적의 공격 게이지가 초기화됩니다.",
+                "buttonText": "공격받기 전에 공격해야겠군"
+            },
+            "overlay": {
+                "text": "이번에는 1 공격을 사용해 보세요!",
+                "position": "near-weapons"
+            },
+            "highlightWeapons": [
+                "w_basic"
+            ],
+            "lockWeapons": [
+                "w_2",
+                "w_3",
+                "w_5",
+                "w_7"
+            ],
+            "condition": "attack_success",
+            "nextStep": 22
+        },
+        "22": {
+            "modal": {
+                "title": "기본 공격",
+                "content": "숫자 1 무기는\n적의 공격을 초기화 시키지 못하고,\n조금 지연시킬 뿐입니다.",
+                "buttonText": "알았어"
+            },
+            "nextStep": 23
+        },
+        "23": {
+            "modal": {
+                "title": "살아남아야 한다",
+                "content": "적의 공격을 계속 받아서\n체력이 0이 되면\n게임 오버입니다.",
+                "buttonText": "조심해야겠군"
+            },
+            "overlay": {
+                "text": "하지만 튜토리얼에서는 무적입니다.\n자유롭게 적을 물리쳐 보세요!",
+                "position": "near-weapons"
+            },
+            "condition": "phase_clear",
+            "nextStep": 30
+        }
+    },
+    "phases": {
+        "1": [
+            {
+                "hp": 43,
+                "maxHp": 43,
+                "damage": 0,
+                "attackInterval": -1
+            }
+        ],
+        "2": [
+            {
+                "hp": 82,
+                "maxHp": 60,
+                "damage": 1,
+                "attackInterval": 10000
+            },
+            {
+                "hp": 70,
+                "maxHp": 60,
+                "damage": 1,
+                "attackInterval": 10000
+            }
+        ]
+    }
+}
