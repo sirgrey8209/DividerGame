@@ -9,7 +9,6 @@ import { Player, type PlayerHandle } from './components/Player';
 import { Menu } from './components/Menu';
 import { GuideModal } from './components/GuideModal';
 import { GuideOverlay } from './components/GuideOverlay';
-import { TutorialCompleteModal } from './components/TutorialCompleteModal';
 import { WorldMap } from './components/WorldMap/WorldMap';
 import { TitleScreen } from './components/TitleScreen';
 import tutorialData from './data/tutorialData.json';
