@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import gameData from '../data/gameData.json';
 import tutorialData from '../data/tutorialData.json';
+import dungeonData from '../data/dungeonData.json';
 
 export interface EnemyData {
     id: string;
@@ -12,9 +13,9 @@ export interface EnemyData {
     attackTimer: number; // ms accumulated
     lastAttackTime: number; // Timestamp of last attack
     damage: number;
-    attackInterval?: number; // Override for attack interval (if negative, attack is disabled)
+    attackInterval?: number;
+    isBoss?: boolean;
 }
-
 export interface WeaponData {
     id: string;
     damage: number;
@@ -25,7 +26,6 @@ export interface WeaponData {
 
 interface GameState {
     enemies: EnemyData[];
-    score: number;
     weaponCooldowns: Record<string, number>;
 
     playerHp: number;
@@ -34,7 +34,12 @@ interface GameState {
     waveSize: number;
 
     isMenuOpen: boolean;
-    gameMode: 'title' | 'normal' | 'tutorial';
+    gameMode: 'title' | 'normal' | 'tutorial' | 'dungeon';
+    currentScene: 'menu' | 'worldmap' | 'game' | 'title';
+    maxUnlockedDungeonId: number;
+    selectedDungeonId: number | null;
+    currentWaveIndex: number; // For dungeon progression
+
     tutorialStep: number;
     tutorialProgress: number; // Granular step for guided tutorial (10-30)
     isTutorialCompleted: boolean;
@@ -44,6 +49,10 @@ interface GameState {
     isInvincible: boolean; // Prevent death during critical lessons
     sessionId: number; // Used to force remount of components (like AnimatePresence) on clear
 
+    // Dungeon Clear Flow
+    isDungeonCleared: boolean;
+    showRewardPopup: boolean;
+
     spawnEnemies: () => void;
     damageEnemy: (id: string, weapon: WeaponData) => boolean;
     triggerCooldown: (id: string, duration?: number) => void;
@@ -51,8 +60,15 @@ interface GameState {
     gameTick: (deltaTime: number) => void;
     restartGame: () => void;
     setMenuOpen: (isOpen: boolean) => void;
-    setGameMode: (mode: 'title' | 'normal' | 'tutorial') => void;
+
+    setGameMode: (mode: 'title' | 'normal' | 'tutorial' | 'dungeon') => void;
+    setCurrentScene: (scene: 'menu' | 'worldmap' | 'game' | 'title') => void;
+    selectDungeon: (id: number) => void;
+    completeDungeon: (id: number) => void;
+    confirmDungeonClear: () => void;
+    closeRewardPopup: () => void;
     completeTutorialAndStartGame: () => void;
+    resetProgress: () => void;
     advanceTutorial: (progress?: number) => void;
 }
 
@@ -68,14 +84,19 @@ export const useGameStore = create<GameState>()(
     persist(
         (set, get) => ({
             enemies: [],
-            score: 0,
             weaponCooldowns: {},
             playerHp: 5,
             maxPlayerHp: 5,
             isGameOver: false,
             waveSize: 0,
             isMenuOpen: false,
-            gameMode: 'normal', // 'normal' | 'tutorial'
+
+            gameMode: 'normal',
+            currentScene: 'menu',
+            maxUnlockedDungeonId: 1,
+            selectedDungeonId: null,
+            currentWaveIndex: 0,
+
             tutorialStep: 0,
             tutorialProgress: 0,
             isTutorialCompleted: false,
@@ -84,8 +105,57 @@ export const useGameStore = create<GameState>()(
             isTimerPaused: false,
             isInvincible: false,
             sessionId: 0,
+            isDungeonCleared: false,
+            showRewardPopup: false,
 
             setMenuOpen: (isOpen) => set({ isMenuOpen: isOpen }),
+            setCurrentScene: (scene) => set({ currentScene: scene }),
+
+            selectDungeon: (id) => {
+                set({
+                    selectedDungeonId: id,
+                    gameMode: 'dungeon',
+                    currentScene: 'game', // Fix: Enter game scene
+                    currentWaveIndex: 0
+                });
+                get().restartGame();
+            },
+
+            completeDungeon: (id) => {
+                const { maxUnlockedDungeonId } = get();
+                if (id >= maxUnlockedDungeonId && maxUnlockedDungeonId < 6) {
+                    set({ maxUnlockedDungeonId: maxUnlockedDungeonId + 1 });
+                }
+                set({ currentScene: 'worldmap', showRewardPopup: true });
+            },
+
+            confirmDungeonClear: () => {
+                const { selectedDungeonId } = get();
+                if (selectedDungeonId) {
+                    get().completeDungeon(selectedDungeonId);
+                }
+                set({ isDungeonCleared: false });
+            },
+
+            closeRewardPopup: () => {
+                set({ showRewardPopup: false });
+            },
+
+            resetProgress: () => {
+                set({
+                    isTutorialCompleted: false,
+                    maxUnlockedDungeonId: 1,
+                    tutorialProgress: 0,
+                    tutorialStep: 0,
+                    gameMode: 'title',
+                    currentScene: 'title',
+                    isMenuOpen: false,
+                    isDungeonCleared: false,
+                    showRewardPopup: false
+                });
+                // Force reset other game states
+                get().restartGame();
+            },
 
             setGameMode: (mode) => {
                 set({
@@ -95,8 +165,11 @@ export const useGameStore = create<GameState>()(
                     isTutorialCompleted: mode === 'tutorial' ? false : get().isTutorialCompleted,
                     lockedWeaponIds: [],
                     highlightedWeaponIds: [],
+
                     isTimerPaused: false,
-                    isInvincible: false
+                    isInvincible: false,
+                    isDungeonCleared: false,
+                    showRewardPopup: false
                 });
                 get().restartGame();
             },
@@ -104,9 +177,8 @@ export const useGameStore = create<GameState>()(
             completeTutorialAndStartGame: () => {
                 set({
                     isTutorialCompleted: true,
-                    gameMode: 'normal',
-                    tutorialStep: 0,
-                    tutorialProgress: 0,
+                    currentScene: 'worldmap',
+                    gameMode: 'dungeon',
                     isMenuOpen: false,
                     isGameOver: false,
                     isTimerPaused: false,
@@ -114,7 +186,7 @@ export const useGameStore = create<GameState>()(
                     lockedWeaponIds: [],
                     highlightedWeaponIds: []
                 });
-                get().restartGame();
+                // No restartGame() needed as we switch scene
             },
 
             advanceTutorial: (progress) => {
@@ -159,6 +231,37 @@ export const useGameStore = create<GameState>()(
                             });
                         });
                         set({ waveSize: (tutorialData as any).phases["2"].length });
+                    }
+                } else if (gameMode === 'dungeon') {
+                    const { selectedDungeonId, currentWaveIndex } = get();
+                    if (selectedDungeonId !== null) {
+                        const dungeon = dungeonData.find(d => d.id === selectedDungeonId);
+                        if (dungeon && dungeon.waves[currentWaveIndex]) {
+                            const waveData = dungeon.waves[currentWaveIndex];
+                            // Currently single enemy per wave in definition, but structure implies array if we wanted multiple.
+                            // However, dungeonData waves is array of objects, implying SEQUENTIAL waves of SINGLE enemies?
+                            // OR does each object in "waves" represent a single enemy entity?
+                            // Based on json: "waves": [ {hp:10...}, {hp:15...} ]
+                            // This looks like sequential spawning of single enemies. 
+                            // Let's treat them as a sequence. "currentWaveIndex" points to the current enemy to fight.
+                            // Actually, typical game: Wave = group of enemies.
+                            // But here JSON is [ {enemy1}, {enemy2}, {boss} ]. 
+                            // So let's spawn ONE enemy at a time for this game style (based on divider logic).
+
+                            newEnemies.push({
+                                id: crypto.randomUUID(),
+                                hp: waveData.hp,
+                                maxHp: waveData.maxHp,
+                                x: 0,
+                                y: 0,
+                                attackTimer: 0,
+                                lastAttackTime: 0,
+                                damage: waveData.damage,
+                                attackInterval: waveData.attackInterval,
+                                isBoss: (waveData as any).boss
+                            });
+                            set({ waveSize: 1 });
+                        }
                     }
                 } else {
                     // Normal Mode
@@ -242,16 +345,35 @@ export const useGameStore = create<GameState>()(
                             }
                         }
                     } else if (updatedEnemies.length === 0 && state.enemies.length > 0) {
-                        // Normal mode respawn
-                        setTimeout(() => get().spawnEnemies(), 500);
+                        if (state.gameMode === 'dungeon') {
+                            // Proceed to next wave or finish dungeon
+                            const { selectedDungeonId, currentWaveIndex } = state;
+                            const dungeon = dungeonData.find(d => d.id === selectedDungeonId);
+
+                            if (dungeon) {
+                                if (currentWaveIndex + 1 < dungeon.waves.length) {
+                                    // Next wave
+                                    set({ currentWaveIndex: currentWaveIndex + 1 });
+                                    setTimeout(() => get().spawnEnemies(), 500); // Match exit animation (0.5s)
+                                } else {
+                                    // Dungeon Cleared
+                                    if (selectedDungeonId) {
+                                        // Trigger Visual Clear State with DELAY for Boss
+                                        // Text appears at 1.5s (Boss anim is 2.5s, allowing overlap)
+                                        setTimeout(() => {
+                                            set({ isDungeonCleared: true });
+                                        }, 1500);
+                                    }
+                                }
+                            }
+                        } else {
+                            // Normal mode respawn
+                            setTimeout(() => get().spawnEnemies(), 500); // Faster spawn for flow
+                        }
                     }
 
-                    const killCount = state.enemies.length - updatedEnemies.length;
-                    const newScore = state.score + (killCount * 10);
-
                     return {
-                        enemies: updatedEnemies,
-                        score: newScore
+                        enemies: updatedEnemies
                     };
                 });
 
@@ -332,10 +454,10 @@ export const useGameStore = create<GameState>()(
                 set({
                     sessionId: state.sessionId + 1,
                     enemies: [],
-                    score: 0,
                     weaponCooldowns: {},
                     playerHp: 5,
                     isGameOver: false,
+                    isDungeonCleared: false, // Reset clear state on restart
                     waveSize: 0,
                     // If tutorial, reset step to 1
                     tutorialStep: state.gameMode === 'tutorial' ? 1 : 0
@@ -345,7 +467,10 @@ export const useGameStore = create<GameState>()(
         }),
         {
             name: 'antigravity-storage',
-            partialize: (state) => ({ isTutorialCompleted: state.isTutorialCompleted }), // Only persist completion status
+            partialize: (state) => ({
+                isTutorialCompleted: state.isTutorialCompleted,
+                maxUnlockedDungeonId: state.maxUnlockedDungeonId
+            }),
         }
     )
 );

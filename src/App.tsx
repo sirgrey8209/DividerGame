@@ -10,14 +10,18 @@ import { Menu } from './components/Menu';
 import { GuideModal } from './components/GuideModal';
 import { GuideOverlay } from './components/GuideOverlay';
 import { TutorialCompleteModal } from './components/TutorialCompleteModal';
+import { WorldMap } from './components/WorldMap/WorldMap';
+import { TitleScreen } from './components/TitleScreen';
 import tutorialData from './data/tutorialData.json';
+import dungeonData from './data/dungeonData.json';
 import './index.css';
 
 function App() {
   const {
-    enemies, score, weaponCooldowns, playerHp, maxPlayerHp, isGameOver, waveSize,
+    enemies, weaponCooldowns, playerHp, maxPlayerHp, isGameOver, waveSize,
     damageEnemy, triggerCooldown, gameTick, restartGame,
-    setMenuOpen, gameMode, setGameMode, tutorialStep,
+    setMenuOpen, gameMode, currentScene, tutorialStep, selectedDungeonId, currentWaveIndex,
+    isDungeonCleared, showRewardPopup, confirmDungeonClear, closeRewardPopup,
     tutorialProgress, lockedWeaponIds, highlightedWeaponIds, advanceTutorial, sessionId
   } = useGameStore();
   const [, setTick] = useState(0);
@@ -50,13 +54,11 @@ function App() {
 
 
   // Handle Initial Start Logic
+  // Handle Initial Start Logic
   useEffect(() => {
-    const state = useGameStore.getState();
-    if (!state.isTutorialCompleted) {
-      if (state.gameMode !== 'tutorial') setGameMode('tutorial');
-    } else {
-      setGameMode('title');
-    }
+    // Force Title Screen on mount/reload
+    useGameStore.getState().setCurrentScene('title');
+    useGameStore.getState().setGameMode('title');
 
     const timer = setInterval(() => {
       setTick(t => t + 1);
@@ -343,222 +345,226 @@ function App() {
     <Layout>
       <Menu />
 
-      {/* Menu Button */}
-      <button
-        onClick={() => setMenuOpen(true)}
-        style={{
-          position: 'absolute',
-          top: 20,
-          left: 20,
-          zIndex: 1000,
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          padding: 10
-        }}
-      >
-        <svg width="30" height="30" viewBox="0 0 24 24" fill="white">
-          <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" />
-        </svg>
-      </button>
+      {/* SCENE: TITLE */}
+      {currentScene === 'title' && <TitleScreen />}
 
-      <div style={{ position: 'absolute', top: 40, right: 20, color: '#ffd700', fontSize: '1.2rem', fontWeight: 'bold', zIndex: 100 }}>
-        {gameMode === 'tutorial' ? `TUTORIAL ${Math.min(tutorialStep, 2)}/2` : `SCORE: ${score}`}
-      </div>
+      {/* SCENE: WORLD MAP */}
+      {currentScene === 'worldmap' && <WorldMap />}
 
-      {/* 1. ENEMY AREA (Top) */}
-      <div style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '40%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexWrap: 'wrap',
-        zIndex: 5
-      }}>
-        <AnimatePresence key={sessionId}>
-          {enemies.map(enemy => {
-            const interval = enemy.attackInterval ?? (5000 * (waveSize || 1));
-            return (
-              <Enemy
-                key={enemy.id}
-                {...enemy}
-                attackTimer={enemy.attackTimer}
-                lastAttackTime={enemy.lastAttackTime}
-                maxAttackTimer={interval < 0 ? -1 : interval}
-                ref={(handle) => handleRegisterEnemy(enemy.id, handle)}
-              />
-            );
-          })}
-        </AnimatePresence>
-      </div>
-
-      {/* 2. PLAYER AREA (Middle) */}
-      <div style={{
-        position: 'absolute',
-        top: '65%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-        zIndex: 10,
-        pointerEvents: 'none'
-      }}>
-        <Player ref={playerRef} hp={playerHp} maxHp={maxPlayerHp} />
-      </div>
-
-      {/* 3. WEAPON & UI AREA (Bottom) */}
-
-      {/* HP TEXT & BAR */}
-      <div style={{
-        position: 'absolute',
-        bottom: 110,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: '5px',
-        zIndex: 15
-      }}>
-        <div style={{ color: '#00ffcc', fontWeight: 'bold', fontSize: '1.2rem', textShadow: '0 0 5px rgba(0,255,204,0.5)' }}>
-          {playerHp} / {maxPlayerHp}
-        </div>
-        <div style={{
-          width: '200px',
-          height: '10px',
-          backgroundColor: '#333',
-          borderRadius: '5px',
-          border: '1px solid #555',
-          overflow: 'hidden',
-        }}>
-          <div style={{
-            width: `${(playerHp / maxPlayerHp) * 100}%`,
-            height: '100%',
-            backgroundColor: playerHp > 2 ? '#00ffcc' : '#ff4444',
-            transition: 'width 0.2s ease-out, background-color 0.2s'
-          }} />
-        </div>
-      </div>
-
-      {/* RED DAMAGE FLASH OVERLAY */}
-      <FlashOverlay playerHp={playerHp} />
-
-      {/* Square Weapons Split: 2 and 2 - Layer 1 (Bottom) */}
-      <div style={{
-        position: 'absolute',
-        bottom: 20,
-        left: 0,
-        width: '100%',
-        display: 'flex',
-        justifyContent: 'center',
-        gap: '90px',
-        zIndex: 20,
-        pointerEvents: 'none'
-      }}>
-        {/* Left Pair */}
-        <div style={{ display: 'flex', gap: '15px', pointerEvents: 'auto' }}>
-          {WEAPONS.slice(1, 3).map(w => (
-            <Weapon
-              key={w.id}
-              data={w}
-              onStartDrag={onStartDrag}
-              isReady={Date.now() >= (weaponCooldowns[w.id] || 0)}
-              cooldownProgress={getCooldownProgress(w.id, w.cooldown)}
-              isLocked={lockedWeaponIds.includes(w.id)}
-              isHighlighted={highlightedWeaponIds.includes(w.id)}
-            />
-          ))}
-        </div>
-        {/* Right Pair */}
-        <div style={{ display: 'flex', gap: '15px', pointerEvents: 'auto' }}>
-          {WEAPONS.slice(3, 5).map(w => (
-            <Weapon
-              key={w.id}
-              data={w}
-              onStartDrag={onStartDrag}
-              isReady={Date.now() >= (weaponCooldowns[w.id] || 0)}
-              cooldownProgress={getCooldownProgress(w.id, w.cooldown)}
-              isLocked={lockedWeaponIds.includes(w.id)}
-              isHighlighted={highlightedWeaponIds.includes(w.id)}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Circle Weapon - Layer 2 (Raised) */}
-      <div style={{
-        position: 'absolute',
-        bottom: 30,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        zIndex: 21
-      }}>
-        <Weapon
-          data={WEAPONS[0]}
-          onStartDrag={onStartDrag}
-          isReady={Date.now() >= (weaponCooldowns[WEAPONS[0].id] || 0)}
-          cooldownProgress={getCooldownProgress(WEAPONS[0].id, WEAPONS[0].cooldown)}
-          isLocked={lockedWeaponIds.includes(WEAPONS[0].id)}
-          isHighlighted={highlightedWeaponIds.includes(WEAPONS[0].id)}
-        />
-      </div>
-
-      {dragState.active && (
-        <svg style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', pointerEvents: 'none', zIndex: 9999 }}>
-          <defs>
-            <marker id="arrowhead" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-              <path d="M0,0 L0,6 L6,3 z" fill="#fff" />
-            </marker>
-          </defs>
-          <path d={getPath()} stroke="#fff" strokeWidth="4" fill="none" strokeLinecap="round" markerEnd="url(#arrowhead)" style={{ filter: 'drop-shadow(0 0 5px #fff)' }} />
-          <circle cx={dragState.currentX} cy={dragState.currentY} r="10" fill="white" />
-        </svg>
-      )}
-
-      {/* GAME OVER OVERLAY */}
-      {isGameOver && (
-        <div style={{
-          position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
-          backgroundColor: 'rgba(0,0,0,0.8)',
-          display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center',
-          zIndex: 10000,
-          color: 'white'
-        }}>
-          <h1 style={{ fontSize: '3rem', color: '#ff4444', marginBottom: '20px' }}>GAME OVER</h1>
-          <p style={{ fontSize: '1.5rem', marginBottom: '40px' }}>Score: {score}</p>
+      {/* SCENE: GAME (Title, Tutorial, Dungeon, Normal) */}
+      {currentScene === 'game' && (
+        <>
+          {/* Menu Button */}
           <button
-            onClick={restartGame}
+            onClick={() => setMenuOpen(true)}
             style={{
-              padding: '15px 40px',
-              fontSize: '1.5rem',
-              backgroundColor: '#00ffcc',
-              color: 'black',
+              position: 'absolute',
+              top: 20,
+              left: 20,
+              zIndex: 1000,
+              background: 'none',
               border: 'none',
-              borderRadius: '8px',
               cursor: 'pointer',
-              fontWeight: 'bold'
+              padding: 10
             }}
           >
-            RETRY
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="white">
+              <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" />
+            </svg>
           </button>
-        </div>
+
+          <div style={{ position: 'absolute', top: 40, right: 20, color: '#ffd700', fontSize: '1.2rem', fontWeight: 'bold', zIndex: 100 }}>
+            {gameMode === 'tutorial'
+              ? `TUTORIAL ${Math.min(tutorialStep, 2)}/2`
+              : (gameMode === 'dungeon' && selectedDungeonId)
+                ? `DUNGEON ${selectedDungeonId} (${currentWaveIndex + 1}/${dungeonData.find(d => d.id === selectedDungeonId)?.waves.length || '?'})`
+                : ''}
+          </div>
+
+          {/* 1. ENEMY AREA (Top) */}
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '40%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexWrap: 'wrap',
+            zIndex: 5
+          }}>
+            <AnimatePresence key={sessionId}>
+              {enemies.map(enemy => {
+                const interval = enemy.attackInterval ?? (5000 * (waveSize || 1));
+                return (
+                  <Enemy
+                    key={enemy.id}
+                    {...enemy}
+                    attackTimer={enemy.attackTimer}
+                    lastAttackTime={enemy.lastAttackTime}
+                    maxAttackTimer={interval < 0 ? -1 : interval}
+                    ref={(handle) => handleRegisterEnemy(enemy.id, handle)}
+                  />
+                );
+              })}
+            </AnimatePresence>
+          </div>
+
+          {/* 2. PLAYER AREA (Middle) */}
+          <div style={{
+            position: 'absolute',
+            top: '65%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 10,
+            pointerEvents: 'none'
+          }}>
+            <Player ref={playerRef} hp={playerHp} maxHp={maxPlayerHp} />
+          </div>
+
+          {/* 3. WEAPON & UI AREA (Bottom) */}
+
+          {/* HP TEXT & BAR */}
+          <div style={{
+            position: 'absolute',
+            bottom: 110,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '5px',
+            zIndex: 15
+          }}>
+            <div style={{ color: '#00ffcc', fontWeight: 'bold', fontSize: '1.2rem', textShadow: '0 0 5px rgba(0,255,204,0.5)' }}>
+              {playerHp} / {maxPlayerHp}
+            </div>
+            <div style={{
+              width: '200px',
+              height: '10px',
+              backgroundColor: '#333',
+              borderRadius: '5px',
+              border: '1px solid #555',
+              overflow: 'hidden',
+            }}>
+              <div style={{
+                width: `${(playerHp / maxPlayerHp) * 100}%`,
+                height: '100%',
+                backgroundColor: playerHp > 2 ? '#00ffcc' : '#ff4444',
+                transition: 'width 0.2s ease-out, background-color 0.2s'
+              }} />
+            </div>
+          </div>
+
+          {/* RED DAMAGE FLASH OVERLAY */}
+          <FlashOverlay playerHp={playerHp} />
+
+          {/* Square Weapons Split: 2 and 2 - Layer 1 (Bottom) */}
+          <div style={{
+            position: 'absolute',
+            bottom: 20,
+            left: 0,
+            width: '100%',
+            display: 'flex',
+            justifyContent: 'center',
+            gap: '90px',
+            zIndex: 20,
+            pointerEvents: 'none'
+          }}>
+            {/* Left Pair */}
+            <div style={{ display: 'flex', gap: '15px', pointerEvents: 'auto' }}>
+              {WEAPONS.slice(1, 3).map(w => (
+                <Weapon
+                  key={w.id}
+                  data={w}
+                  onStartDrag={onStartDrag}
+                  isReady={Date.now() >= (weaponCooldowns[w.id] || 0)}
+                  cooldownProgress={getCooldownProgress(w.id, w.cooldown)}
+                  isLocked={lockedWeaponIds.includes(w.id)}
+                  isHighlighted={highlightedWeaponIds.includes(w.id)}
+                />
+              ))}
+            </div>
+            {/* Right Pair */}
+            <div style={{ display: 'flex', gap: '15px', pointerEvents: 'auto' }}>
+              {WEAPONS.slice(3, 5).map(w => (
+                <Weapon
+                  key={w.id}
+                  data={w}
+                  onStartDrag={onStartDrag}
+                  isReady={Date.now() >= (weaponCooldowns[w.id] || 0)}
+                  cooldownProgress={getCooldownProgress(w.id, w.cooldown)}
+                  isLocked={lockedWeaponIds.includes(w.id)}
+                  isHighlighted={highlightedWeaponIds.includes(w.id)}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Circle Weapon - Layer 2 (Raised) */}
+          <div style={{
+            position: 'absolute',
+            bottom: 30,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 21
+          }}>
+            <Weapon
+              data={WEAPONS[0]}
+              onStartDrag={onStartDrag}
+              isReady={Date.now() >= (weaponCooldowns[WEAPONS[0].id] || 0)}
+              cooldownProgress={getCooldownProgress(WEAPONS[0].id, WEAPONS[0].cooldown)}
+              isLocked={lockedWeaponIds.includes(WEAPONS[0].id)}
+              isHighlighted={highlightedWeaponIds.includes(WEAPONS[0].id)}
+            />
+          </div>
+
+          {dragState.active && (
+            <svg style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', pointerEvents: 'none', zIndex: 9999 }}>
+              <defs>
+                <marker id="arrowhead" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                  <path d="M0,0 L0,6 L6,3 z" fill="#fff" />
+                </marker>
+              </defs>
+              <path d={getPath()} stroke="#fff" strokeWidth="4" fill="none" strokeLinecap="round" markerEnd="url(#arrowhead)" style={{ filter: 'drop-shadow(0 0 5px #fff)' }} />
+              <circle cx={dragState.currentX} cy={dragState.currentY} r="10" fill="white" />
+            </svg>
+          )}
+
+          {/* GAME OVER OVERLAY */}
+          {isGameOver && (
+            <div style={{
+              position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+              backgroundColor: 'rgba(0,0,0,0.8)',
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              zIndex: 10000,
+              color: 'white'
+            }}>
+              <h1 style={{ fontSize: '3rem', color: '#ff4444', marginBottom: '20px' }}>GAME OVER</h1>
+
+              <button
+                onClick={restartGame}
+                style={{
+                  padding: '15px 40px',
+                  fontSize: '1.5rem',
+                  backgroundColor: '#00ffcc',
+                  color: 'black',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold'
+                }}
+              >
+                RETRY
+              </button>
+            </div>
+          )}
+        </>
       )}
 
-      {/* Title Screen Modal (Reusing GuideModal) */}
-      {gameMode === 'title' && (
-        <GuideModal
-          title="Divider Game"
-          content={null}
-          buttonText="START"
-          onNext={() => {
-            restartGame();
-            setGameMode('normal');
-          }}
-        />
-      )}
+
 
       {/* GUIDED TUTORIAL UI */}
       {/* GUIDED TUTORIAL UI (Data Driven) */}
@@ -588,10 +594,96 @@ function App() {
         return null;
       })()}
 
-      {/* TUTORIAL COMPLETE MODAL */}
-      {gameMode === 'tutorial' && tutorialStep === 3 && (
-        <TutorialCompleteModal />
+      {/* DUNGEON CLEAR OVERLAY */}
+      {gameMode === 'dungeon' && isDungeonCleared && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+          backgroundColor: 'rgba(0,0,0,0.85)',
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          zIndex: 10000,
+          color: 'white',
+          animation: 'fadeIn 0.5s ease-out'
+        }}>
+          <h1 style={{
+            fontSize: '2.5rem',
+            color: '#ffd700',
+            marginBottom: '40px',
+            textShadow: '0 0 20px #ffd700',
+            animation: 'scaleIn 0.5s ease-out',
+            textAlign: 'center',
+            width: '100%',
+            maxWidth: '350px', // Restrict to portrait width
+            lineHeight: '1.2',
+            wordBreak: 'keep-all'
+          }}>
+            DUNGEON CLEARED!
+          </h1>
+          <button
+            onClick={confirmDungeonClear}
+            style={{
+              padding: '20px 60px',
+              fontSize: '1.5rem',
+              backgroundColor: '#00ffcc',
+              color: 'black',
+              border: 'none',
+              borderRadius: '12px',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              boxShadow: '0 0 20px #00ffcc',
+              transition: 'transform 0.2s'
+            }}
+            onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+            onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+          >
+            월드맵으로
+          </button>
+        </div>
       )}
+
+      {/* REWARD MODAL */}
+      {currentScene === 'worldmap' && showRewardPopup && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+          backgroundColor: 'rgba(0,0,0,0.7)',
+          display: 'flex',
+          alignItems: 'center', justifyContent: 'center',
+          zIndex: 10001
+        }}>
+          <div style={{
+            width: '80%', maxWidth: '400px',
+            backgroundColor: '#1a1a1a',
+            border: '2px solid #00ffcc',
+            borderRadius: '16px',
+            padding: '40px',
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            boxShadow: '0 0 30px rgba(0,255,204,0.3)',
+            color: 'white'
+          }}>
+            <h2 style={{ fontSize: '2rem', marginBottom: '30px', color: '#00ffcc' }}>보상 획득</h2>
+            <div style={{ fontSize: '1.2rem', marginBottom: '40px', textAlign: 'center' }}>
+              던전 클리어 보상을 획득했습니다!<br />
+              <span style={{ fontSize: '0.9rem', color: '#888' }}>(보상 시스템 구현 예정)</span>
+            </div>
+            <button
+              onClick={closeRewardPopup}
+              style={{
+                padding: '12px 40px',
+                fontSize: '1.2rem',
+                backgroundColor: '#00ffcc',
+                color: 'black',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              확인
+            </button>
+          </div>
+        </div>
+      )}
+
     </Layout>
   );
 }

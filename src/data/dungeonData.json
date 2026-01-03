@@ -1,0 +1,164 @@
+[
+    {
+        "id": 1,
+        "name": "시작의 숲",
+        "x": 50,
+        "y": 1100,
+        "waves": [
+            {
+                "hp": 10,
+                "maxHp": 10,
+                "damage": 1,
+                "attackInterval": 5000
+            },
+            {
+                "hp": 15,
+                "maxHp": 15,
+                "damage": 1,
+                "attackInterval": 5000
+            },
+            {
+                "hp": 20,
+                "maxHp": 20,
+                "damage": 1,
+                "boss": true,
+                "attackInterval": 4000
+            }
+        ]
+    },
+    {
+        "id": 2,
+        "name": "고요한 호수",
+        "x": 80,
+        "y": 900,
+        "waves": [
+            {
+                "hp": 25,
+                "maxHp": 25,
+                "damage": 2,
+                "attackInterval": 4500
+            },
+            {
+                "hp": 30,
+                "maxHp": 30,
+                "damage": 2,
+                "attackInterval": 4500
+            },
+            {
+                "hp": 40,
+                "maxHp": 40,
+                "damage": 2,
+                "boss": true,
+                "attackInterval": 3500
+            }
+        ]
+    },
+    {
+        "id": 3,
+        "name": "오래된 유적",
+        "x": 20,
+        "y": 700,
+        "waves": [
+            {
+                "hp": 50,
+                "maxHp": 50,
+                "damage": 3,
+                "attackInterval": 4000
+            },
+            {
+                "hp": 60,
+                "maxHp": 60,
+                "damage": 3,
+                "attackInterval": 4000
+            },
+            {
+                "hp": 80,
+                "maxHp": 80,
+                "damage": 3,
+                "boss": true,
+                "attackInterval": 3000
+            }
+        ]
+    },
+    {
+        "id": 4,
+        "name": "불타는 협곡",
+        "x": 70,
+        "y": 500,
+        "waves": [
+            {
+                "hp": 100,
+                "maxHp": 100,
+                "damage": 4,
+                "attackInterval": 3500
+            },
+            {
+                "hp": 120,
+                "maxHp": 120,
+                "damage": 4,
+                "attackInterval": 3500
+            },
+            {
+                "hp": 150,
+                "maxHp": 150,
+                "damage": 5,
+                "boss": true,
+                "attackInterval": 2500
+            }
+        ]
+    },
+    {
+        "id": 5,
+        "name": "얼어붙은 산맥",
+        "x": 30,
+        "y": 300,
+        "waves": [
+            {
+                "hp": 200,
+                "maxHp": 200,
+                "damage": 5,
+                "attackInterval": 3000
+            },
+            {
+                "hp": 250,
+                "maxHp": 250,
+                "damage": 5,
+                "attackInterval": 3000
+            },
+            {
+                "hp": 300,
+                "maxHp": 300,
+                "damage": 7,
+                "boss": true,
+                "attackInterval": 2000
+            }
+        ]
+    },
+    {
+        "id": 6,
+        "name": "심연의 제단",
+        "x": 50,
+        "y": 100,
+        "waves": [
+            {
+                "hp": 500,
+                "maxHp": 500,
+                "damage": 10,
+                "attackInterval": 2500
+            },
+            {
+                "hp": 700,
+                "maxHp": 700,
+                "damage": 10,
+                "attackInterval": 2500
+            },
+            {
+                "hp": 1000,
+                "maxHp": 1000,
+                "damage": 15,
+                "boss": true,
+                "attackInterval": 1500
+            }
+        ]
+    }
+]

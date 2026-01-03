@@ -4,8 +4,8 @@ export const Menu = () => {
     const {
         isMenuOpen, setMenuOpen,
         restartGame,
-        gameMode, setGameMode,
-        isTutorialCompleted,
+        resetProgress,
+        gameMode,
         completeTutorialAndStartGame
     } = useGameStore();
 
@@ -47,28 +47,38 @@ export const Menu = () => {
 
             <div style={{ height: '20px' }}></div>
 
-            <button
-                onClick={() => {
-                    if (gameMode === 'tutorial') {
+            <div style={{ height: '20px' }}></div>
+
+            {gameMode === 'tutorial' ? (
+                <button
+                    onClick={() => {
                         completeTutorialAndStartGame();
-                    } else {
-                        setGameMode('tutorial');
-                    }
-                    setMenuOpen(false);
-                }}
-                style={{
-                    ...buttonStyle,
-                    backgroundColor: '#ffd700',
-                    color: 'black',
-                    opacity: 1
-                }}
-            >
-                {gameMode === 'tutorial' ? '튜토리얼 건너뛰기' : '튜토리얼 다시 하기'}
-            </button>
-            {isTutorialCompleted && gameMode !== 'tutorial' && (
-                <p style={{ marginTop: '10px', color: '#aaa', fontSize: '0.9rem' }}>
-                    튜토리얼 완료됨
-                </p>
+                        setMenuOpen(false);
+                    }}
+                    style={{
+                        ...buttonStyle,
+                        backgroundColor: '#ffd700',
+                        color: 'black',
+                    }}
+                >
+                    튜토리얼 건너뛰기
+                </button>
+            ) : (
+                <button
+                    onClick={() => {
+                        const confirmReset = window.confirm("정말로 모든 데이터를 초기화하시겠습니까? (되돌릴 수 없습니다)");
+                        if (confirmReset) {
+                            resetProgress();
+                        }
+                    }}
+                    style={{
+                        ...buttonStyle,
+                        backgroundColor: '#ff4444',
+                        color: 'white',
+                    }}
+                >
+                    데이터 초기화
+                </button>
             )}
         </div>
     );
